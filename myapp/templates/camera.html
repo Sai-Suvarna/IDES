@@ -1,0 +1,361 @@
+<!-- <!DOCTYPE html>
+<html>
+<head>
+    <title>Camera</title>
+</head>
+<body>
+    <h1>Camera View</h1>
+    <video id="video" width="640" height="480" autoplay></video>
+    <button id="startButton">Start Camera</button>
+    <button id="snapButton">Capture Image</button>
+
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    // Add the result div here
+    
+    <div id="result"></div>
+
+    
+    <ul id="resList"></ul>
+
+    
+    <ul id="objectResultsList"></ul>
+
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const startButton = document.getElementById('startButton');
+            const snapButton = document.getElementById('snapButton');
+            const constraints = {
+                video: true
+            };
+            
+            let stream; // To store the video stream
+
+            startButton.addEventListener('click', async () => {
+                try {
+                    // Get access to the webcam
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    video.srcObject = stream;
+                } catch (err) {
+                    console.error('Error accessing webcam:', err);
+                }
+            });
+
+            snapButton.addEventListener('click', () => {
+                // Get the context of the canvas
+                const context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                // Convert the canvas content to a data URL
+                const imgData = canvas.toDataURL('image/png');
+
+                // Create a Blob from the base64 data
+                const blob = base64ToBlob(imgData);
+
+                // Create a FormData object
+                const formData = new FormData();
+
+                // Append the Blob as an UploadFile to the FormData
+                // formData.append('imgData', blob, 'snap.png');
+                formData.append('image_file', blob, 'captured_image.png');
+
+      fetch('/capture/', {
+    method: 'POST',
+    headers: {
+        'X-CSRFToken': getCookie('csrftoken')  // Include the CSRF token in the headers
+    },
+    body: formData
+})
+.then(response => {
+    if (!response.ok) {
+        throw new Error('Network response was not ok');
+    }
+    return response.json(); // Parse JSON response
+})
+.then(data => {
+    console.log(data);
+    // Redirect or display response as needed
+})
+.catch(error => {
+    console.error('Error:', error);
+});
+
+
+
+
+
+// // Inside the snapButton event listener
+// fetch('/capture/', {
+//     method: 'POST',
+//     headers: {
+//         'X-CSRFToken': getCookie('csrftoken')  // Include the CSRF token in the headers
+//     },
+//     body: formData
+// })
+// .then(response => {
+//     if (!response.ok) {
+//         throw new Error('Network response was not ok');
+//     }
+//     return response.json(); // Parse JSON response
+// })
+// .then(data => {
+//     // Display the result on the HTML page
+//     displayResult(data);
+// })
+// .catch(error => {
+//     console.error('Error:', error);
+// });
+
+// Function to display the result on the HTML page
+function displayResult(data) {
+    // Display the 'res' part
+    const resList = document.getElementById('resList');
+    resList.innerHTML = ''; // Clear previous results
+    data.res.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        resList.appendChild(li);
+    });
+
+    // Display the 'object_results' part
+    const objectResultsList = document.getElementById('objectResultsList');
+    objectResultsList.innerHTML = ''; // Clear previous results
+    data.object_results.forEach(obj => {
+        const li = document.createElement('li');
+        li.textContent = `${obj.Name}: ${obj.Description}`;
+        objectResultsList.appendChild(li);
+    });
+}
+
+
+// Function to get CSRF cookie value
+function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+
+                // Stop the camera stream
+                stopCameraStream();
+            });
+
+            // Function to stop the camera stream
+            function stopCameraStream() {
+                if (stream) {
+                    const tracks = stream.getTracks();
+                    tracks.forEach(track => {
+                        track.stop();
+                    });
+                    video.srcObject = null;
+                }
+            }
+
+            // Function to convert base64 to Blob
+            function base64ToBlob(base64Data) {
+                const byteCharacters = atob(base64Data.split(',')[1]);
+                const byteArrays = [];
+                for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+                    const slice = byteCharacters.slice(offset, offset + 512);
+                    const byteNumbers = new Array(slice.length);
+                    for (let i = 0; i < slice.length; i++) {
+                        byteNumbers[i] = slice.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    byteArrays.push(byteArray);
+                }
+                return new Blob(byteArrays, { type: 'image/png' });
+            }
+        });
+    </script> 
+
+</body>
+</html> -->
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Camera</title>
+</head>
+<body>
+    <h1>Camera View</h1>
+    <video id="video" width="640" height="480" autoplay></video>
+    <button id="startButton">Start Camera</button>
+    <button id="snapButton">Capture Image</button>
+
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <div id="resultContainer" style="display:none;">
+        <h2>Image Processing Result</h2>
+        <ul id="resultList"></ul>
+        
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const startButton = document.getElementById('startButton');
+            const snapButton = document.getElementById('snapButton');
+            const resultContainer = document.getElementById('resultContainer');
+            const resultList = document.getElementById('resultList');
+            const resultImage = document.getElementById('resultImage');
+            const constraints = {
+                video: true
+            };
+
+            let stream; // To store the video stream
+
+            startButton.addEventListener('click', async () => {
+                try {
+                    // Get access to the webcam
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    video.srcObject = stream;
+                } catch (err) {
+                    console.error('Error accessing webcam:', err);
+                }
+            });
+
+            snapButton.addEventListener('click', () => {
+                // Get the context of the canvas
+                const context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                // Convert the canvas content to a data URL
+                const imgData = canvas.toDataURL('image/png');
+
+                // Create a Blob from the base64 data
+                const blob = base64ToBlob(imgData);
+
+                // Create a FormData object
+                const formData = new FormData();
+
+                // Append the Blob as an UploadFile to the FormData
+                formData.append('image_file', blob, 'captured_image.png');
+
+                fetch('/capture/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')  // Include the CSRF token in the headers
+                    },
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json(); // Parse JSON response
+                })
+                .then(data => {
+                    // Display the result on the HTML page
+                    displayResult(data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+
+                // Stop the camera stream
+                stopCameraStream();
+            });
+
+            // Function to get CSRF cookie value
+            function getCookie(name) {
+                var cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    var cookies = document.cookie.split(';');
+                    for (var i = 0; i < cookies.length; i++) {
+                        var cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+            
+//             // Function to display the result on the HTML page
+// function displayResult(data) {
+//     resultContainer.style.display = 'block';
+//     resultList.innerHTML = ''; // Clear previous results
+
+//     // Display text results
+//     data.res.forEach(item => {
+//         const li = document.createElement('li');
+//         li.textContent = item;
+//         resultList.appendChild(li);
+//     });
+
+//     // Display object results
+//     data.object_results.forEach(obj => {
+//         const li = document.createElement('li');
+//         li.textContent = obj.Name + ': ' + obj.Description;
+//         resultList.appendChild(li);
+//     });
+// }
+
+// Function to display the result on the HTML page
+function displayResult(data) {
+    resultContainer.style.display = 'block';
+    resultList.innerHTML = ''; // Clear previous results
+
+    // Convert data to JSON format
+    const jsonData = JSON.stringify(data, null, 2);
+
+    // Display JSON result
+    const pre = document.createElement('pre');
+    pre.textContent = jsonData;
+    resultList.appendChild(pre);
+}
+
+
+
+
+            // Function to stop the camera stream
+            function stopCameraStream() {
+                if (stream) {
+                    const tracks = stream.getTracks();
+                    tracks.forEach(track => {
+                        track.stop();
+                    });
+                    video.srcObject = null;
+                }
+            }
+
+            // Function to convert base64 to Blob
+            function base64ToBlob(base64Data) {
+                const byteCharacters = atob(base64Data.split(',')[1]);
+                const byteArrays = [];
+                for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+                    const slice = byteCharacters.slice(offset, offset + 512);
+                    const byteNumbers = new Array(slice.length);
+                    for (let i = 0; i < slice.length; i++) {
+                        byteNumbers[i] = slice.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    byteArrays.push(byteArray);
+                }
+                return new Blob(byteArrays, { type: 'image/png' });
+            }
+        });
+    </script>
+</body>
+</html>
